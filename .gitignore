@@ -1,5 +1,5 @@
 # Binaries
-session-manager
+bin/
 *.exe
 *.exe~
 *.dll
