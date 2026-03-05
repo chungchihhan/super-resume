@@ -590,7 +590,9 @@ func (m Model) renderList(height, width int) string {
 		}
 
 		name := truncateStr(s.Name, 30)
-		dir := truncateStr(s.Directory, 20)
+		// Decode directory path for display (- back to /)
+		displayDir := session.DecodeDirPath(s.Directory)
+		dir := truncateStr(displayDir, 20)
 		date := s.Modified.Format("01/02 15:04")
 		msgs := fmt.Sprintf("%3d msgs", s.MessageCount)
 

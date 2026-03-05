@@ -187,11 +187,14 @@ func cmdList(mgr *session.Manager) error {
 			tags = fmt.Sprintf(" [%s]", joinTags(s.Tags))
 		}
 
+		// Decode directory path for display (- back to /)
+		displayDir := session.DecodeDirPath(s.Directory)
+
 		fmt.Printf("%s %-30s │ %s │ %-20s │ %d msgs%s\n",
 			pin,
 			truncate(s.Name, 30),
 			s.Modified.Format("2006-01-02 15:04"),
-			truncate(s.Directory, 20),
+			truncate(displayDir, 20),
 			s.MessageCount,
 			tags,
 		)

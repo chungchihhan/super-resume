@@ -76,6 +76,12 @@ func encodeDirPath(path string) string {
 	return strings.ReplaceAll(path, "/", "-")
 }
 
+// DecodeDirPath decodes a Claude Code directory path back to normal format.
+func DecodeDirPath(encoded string) string {
+	// Replace - with / to restore the original path
+	return strings.ReplaceAll(encoded, "-", "/")
+}
+
 // ListForCurrentDir returns sessions for the current directory only.
 func (m *Manager) ListForCurrentDir() ([]*Session, error) {
 	all, err := m.List()
