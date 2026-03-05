@@ -56,20 +56,21 @@ var (
 
 // keyMap defines keybindings.
 type keyMap struct {
-	Up       key.Binding
-	Down     key.Binding
-	Pin      key.Binding
-	Delete   key.Binding
-	Tag      key.Binding
-	Filter   key.Binding
-	Preview  key.Binding
-	Enter    key.Binding
-	Escape   key.Binding
-	Help     key.Binding
-	Quit     key.Binding
-	Confirm  key.Binding
-	PageUp   key.Binding
-	PageDown key.Binding
+	Up        key.Binding
+	Down      key.Binding
+	Pin       key.Binding
+	Delete    key.Binding
+	Tag       key.Binding
+	Filter    key.Binding
+	Preview   key.Binding
+	Enter     key.Binding
+	Escape    key.Binding
+	Help      key.Binding
+	Quit      key.Binding
+	Confirm   key.Binding
+	PageUp    key.Binding
+	PageDown  key.Binding
+	ToggleAll key.Binding
 }
 
 var keys = keyMap{
@@ -129,17 +130,21 @@ var keys = keyMap{
 		key.WithKeys("pgdown", "ctrl+d"),
 		key.WithHelp("pgdn", "page down"),
 	),
+	ToggleAll: key.NewBinding(
+		key.WithKeys("a"),
+		key.WithHelp("a", "all/current dir"),
+	),
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Up, k.Down, k.Pin, k.Delete, k.Filter, k.Help, k.Quit}
+	return []key.Binding{k.Up, k.Down, k.Pin, k.Delete, k.Filter, k.ToggleAll, k.Help, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.PageUp, k.PageDown},
 		{k.Pin, k.Delete, k.Tag},
-		{k.Filter, k.Preview, k.Enter},
+		{k.Filter, k.Preview, k.Enter, k.ToggleAll},
 		{k.Help, k.Quit, k.Escape},
 	}
 }
@@ -169,8 +174,10 @@ type Model struct {
 	help            help.Model
 	showHelp        bool
 	showPreview     bool
+	showAllSessions bool // false = current dir only, true = all sessions
 	statusMessage   string
 	selectedSession *session.Session
+	currentDir      string
 }
 
 // New creates a new TUI model.
@@ -184,12 +191,14 @@ func New(mgr *session.Manager, meta *metadata.Store) Model {
 	tagInput.CharLimit = 30
 
 	return Model{
-		manager:     mgr,
-		metadata:    meta,
-		help:        help.New(),
-		filterInput: filterInput,
-		tagInput:    tagInput,
-		showPreview: true,
+		manager:         mgr,
+		metadata:        meta,
+		help:            help.New(),
+		filterInput:     filterInput,
+		tagInput:        tagInput,
+		showPreview:     true,
+		showAllSessions: false, // Default: current directory only
+		currentDir:      mgr.GetCurrentDir(),
 	}
 }
 
@@ -199,7 +208,15 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) loadSessions() tea.Msg {
-	sessions, err := m.manager.List()
+	var sessions []*session.Session
+	var err error
+
+	if m.showAllSessions {
+		sessions, err = m.manager.List()
+	} else {
+		sessions, err = m.manager.ListForCurrentDir()
+	}
+
 	if err != nil {
 		return errMsg{err}
 	}
@@ -387,6 +404,15 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Help):
 		m.showHelp = !m.showHelp
 
+	case key.Matches(msg, keys.ToggleAll):
+		m.showAllSessions = !m.showAllSessions
+		if m.showAllSessions {
+			m.statusMessage = "Showing all sessions"
+		} else {
+			m.statusMessage = "Showing current directory only"
+		}
+		return m, m.loadSessions
+
 	case key.Matches(msg, keys.Enter):
 		if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 			s := m.filtered[m.cursor]
@@ -448,8 +474,19 @@ func (m Model) View() string {
 
 	var b strings.Builder
 
-	// Title
-	b.WriteString(titleStyle.Render("📋 Claude Code Session Manager"))
+	// Title with current directory
+	title := "📋 Claude Code Session Manager"
+	if m.showAllSessions {
+		title += " (all sessions)"
+	} else {
+		// Show shortened current directory
+		dir := m.currentDir
+		if len(dir) > 40 {
+			dir = "..." + dir[len(dir)-37:]
+		}
+		title += fmt.Sprintf(" 📁 %s", dir)
+	}
+	b.WriteString(titleStyle.Render(title))
 	b.WriteString("\n")
 
 	// Filter line
@@ -595,6 +632,12 @@ func (m Model) renderList(height, width int) string {
 	return b.String()
 }
 
+// Style for command display
+var commandStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("82")).
+	Background(lipgloss.Color("236")).
+	Padding(0, 1)
+
 func (m Model) renderPreview(height, width int) string {
 	if len(m.filtered) == 0 || m.cursor >= len(m.filtered) {
 		return ""
@@ -607,8 +650,6 @@ func (m Model) renderPreview(height, width int) string {
 	content.WriteString("\n")
 	content.WriteString(dimStyle.Render(fmt.Sprintf("ID: %s", s.ID[:min(20, len(s.ID))])))
 	content.WriteString("\n")
-	content.WriteString(dimStyle.Render(fmt.Sprintf("Directory: %s", s.Directory)))
-	content.WriteString("\n")
 	content.WriteString(dimStyle.Render(fmt.Sprintf("Messages: %d", s.MessageCount)))
 	content.WriteString("\n")
 
@@ -620,12 +661,20 @@ func (m Model) renderPreview(height, width int) string {
 		content.WriteString("\n")
 	}
 
+	// Resume command
+	content.WriteString("\n")
+	content.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("82")).Render("Resume Command:"))
+	content.WriteString("\n")
+	resumeCmd := fmt.Sprintf("claude --resume %s", s.ID)
+	content.WriteString(commandStyle.Render(resumeCmd))
+	content.WriteString("\n")
+
 	content.WriteString("\n")
 	content.WriteString(lipgloss.NewStyle().Bold(true).Render("Preview:"))
 	content.WriteString("\n")
 
-	// Get preview
-	preview, err := m.manager.GetPreview(s.ID, height-8)
+	// Get preview - reduce lines to make room for command
+	preview, err := m.manager.GetPreview(s.ID, height-12)
 	if err == nil {
 		for _, line := range preview {
 			wrapped := wrapText(line, width-4)

@@ -40,6 +40,7 @@ type Message struct {
 // Manager handles session operations.
 type Manager struct {
 	sessionsDir string
+	currentDir  string // Current working directory for filtering
 	metadata    *metadata.Store
 }
 
@@ -50,10 +51,54 @@ func NewManager(meta *metadata.Store) (*Manager, error) {
 		return nil, err
 	}
 
+	cwd, _ := os.Getwd()
+
 	return &Manager{
 		sessionsDir: filepath.Join(home, ".claude", "projects"),
+		currentDir:  cwd,
 		metadata:    meta,
 	}, nil
+}
+
+// SetCurrentDir sets the directory to filter sessions by.
+func (m *Manager) SetCurrentDir(dir string) {
+	m.currentDir = dir
+}
+
+// GetCurrentDir returns the current directory.
+func (m *Manager) GetCurrentDir() string {
+	return m.currentDir
+}
+
+// encodeDirPath encodes a directory path the way Claude Code does it.
+func encodeDirPath(path string) string {
+	// Claude Code replaces / with - in directory names
+	return strings.ReplaceAll(path, "/", "-")
+}
+
+// ListForCurrentDir returns sessions for the current directory only.
+func (m *Manager) ListForCurrentDir() ([]*Session, error) {
+	all, err := m.List()
+	if err != nil {
+		return nil, err
+	}
+
+	if m.currentDir == "" {
+		return all, nil
+	}
+
+	// Encode the current directory path like Claude Code does
+	encodedDir := encodeDirPath(m.currentDir)
+
+	var filtered []*Session
+	for _, s := range all {
+		// Match if the session's directory matches the encoded current dir
+		if s.Directory == encodedDir || strings.HasPrefix(s.Directory, encodedDir) {
+			filtered = append(filtered, s)
+		}
+	}
+
+	return filtered, nil
 }
 
 // List returns all sessions, sorted by pinned status then modified time.
