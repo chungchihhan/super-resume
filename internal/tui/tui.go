@@ -4,6 +4,7 @@ package tui
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/key"
@@ -204,6 +205,7 @@ func New(mgr *session.Manager, meta *metadata.Store) Model {
 		tagInput:        tagInput,
 		showPreview:     true,
 		showAllSessions: false, // Default: current directory only
+		showAgents:      true,  // Default: show agent sessions
 		currentDir:      mgr.GetCurrentDir(),
 	}
 }
@@ -496,19 +498,11 @@ func (m Model) View() string {
 
 	var b strings.Builder
 
-	// Title with current directory
-	title := "📋 Claude Code Session Manager"
-	if m.showAllSessions {
-		title += " (all sessions)"
-	} else {
-		// Show shortened current directory
-		dir := m.currentDir
-		if len(dir) > 40 {
-			dir = "..." + dir[len(dir)-37:]
-		}
-		title += fmt.Sprintf(" 📁 %s", dir)
+	// Simple title
+	b.WriteString(titleStyle.Render("Sessions"))
+	if !m.showAllSessions {
+		b.WriteString(dimStyle.Render(fmt.Sprintf(" in %s", m.currentDir)))
 	}
-	b.WriteString(titleStyle.Render(title))
 	b.WriteString("\n")
 
 	// Filter line
@@ -529,21 +523,18 @@ func (m Model) View() string {
 
 	b.WriteString("\n")
 
-	// Calculate list height
-	listHeight := m.height - 10
-	if m.showHelp {
-		listHeight -= 6
-	}
-	if listHeight < 5 {
-		listHeight = 5
+	// Calculate list height (each session takes ~3 lines)
+	listHeight := (m.height - 8) / 3
+	if listHeight < 3 {
+		listHeight = 3
 	}
 
-	// Calculate preview width
+	// Calculate preview width - list gets 70%, preview gets 30%
 	listWidth := m.width
 	previewWidth := 0
-	if m.showPreview && m.width > 80 {
-		listWidth = m.width * 55 / 100
-		previewWidth = m.width - listWidth - 4
+	if m.showPreview && m.width > 100 {
+		listWidth = m.width * 70 / 100
+		previewWidth = m.width - listWidth - 2
 	}
 
 	// Session list
@@ -574,13 +565,19 @@ func (m Model) View() string {
 		b.WriteString(m.tagInput.View())
 	}
 
-	// Help
+	// Help bar - Claude Code style
 	b.WriteString("\n")
-	if m.showHelp {
-		b.WriteString(m.help.View(keys))
-	} else {
-		b.WriteString(helpStyle.Render("Press ? for help"))
+	helpItems := []string{
+		"A to show all",
+		"S to toggle agents",
+		"P to pin",
+		"D to delete",
+		"T to tag",
+		"Type to search",
+		"Esc to cancel",
+		"→ to preview",
 	}
+	b.WriteString(dimStyle.Render(strings.Join(helpItems, " · ")))
 
 	return b.String()
 }
@@ -605,68 +602,34 @@ func (m Model) renderList(height, width int) string {
 	for i := start; i < end; i++ {
 		s := m.filtered[i]
 
-		// Build session line
-		prefix := "  "
-		if s.IsPinned {
-			prefix = "📌"
-		} else if s.IsAgent {
-			prefix = "  └─" // Indent agent sessions
-		}
-
-		name := truncateStr(s.Name, 30)
-		date := s.Modified.Format("01/02 15:04")
-		msgs := fmt.Sprintf("%3d msgs", s.MessageCount)
-
-		var line string
-		if m.showAllSessions {
-			// Show directory when viewing all sessions
-			displayDir := session.DecodeDirPath(s.Directory)
-			// Show more of the path - just the last 2 segments
-			dirParts := strings.Split(displayDir, "/")
-			if len(dirParts) > 2 {
-				displayDir = ".../" + strings.Join(dirParts[len(dirParts)-2:], "/")
-			}
-			dir := truncateStr(displayDir, 30)
-			line = fmt.Sprintf("%s %-30s │ %s │ %-30s │ %s",
-				prefix, name, date, dir, msgs)
-		} else {
-			// Hide directory when in current-dir mode (it's redundant)
-			line = fmt.Sprintf("%s %-40s │ %s │ %s",
-				prefix, name, date, msgs)
-		}
-
-		// Add tags
-		if len(s.Tags) > 0 {
-			tagStr := " "
-			for _, t := range s.Tags {
-				tagStr += tagStyle.Render(t) + " "
-			}
-			line += tagStr
-		}
-
-		// Truncate to width
-		if len(line) > width-2 {
-			line = line[:width-5] + "..."
-		}
-
-		// Apply style
+		// Build session line - Claude Code style
+		cursor := "  "
 		if i == m.cursor {
-			line = selectedStyle.Render(line)
-		} else if s.IsPinned {
-			line = pinnedStyle.Render(line)
-		} else if s.IsAgent {
-			line = dimStyle.Render(line) // Dim agent sessions
-		} else {
-			line = normalStyle.Render(line)
+			cursor = "▶ "
 		}
 
-		b.WriteString(line)
-		b.WriteString("\n")
-	}
+		// Session summary (first part of name, truncated)
+		summary := truncateStr(s.Name, width-20)
 
-	// Scroll indicator
-	if len(m.filtered) > height {
-		b.WriteString(dimStyle.Render(fmt.Sprintf("\n(%d/%d)", m.cursor+1, len(m.filtered))))
+		// Relative time
+		relTime := relativeTime(s.Modified)
+
+		// Message count and ID
+		meta := fmt.Sprintf("%s · %d messages · %s", relTime, s.MessageCount, truncateStr(s.ID, 20))
+
+		// Apply style - consistent alignment
+		if i == m.cursor {
+			b.WriteString(selectedStyle.Render(cursor + summary))
+		} else if s.IsPinned {
+			b.WriteString(pinnedStyle.Render(cursor + summary))
+		} else if s.IsAgent {
+			b.WriteString(dimStyle.Render(cursor + summary))
+		} else {
+			b.WriteString(normalStyle.Render(cursor + summary))
+		}
+		b.WriteString("\n")
+		b.WriteString("  " + dimStyle.Render(meta))
+		b.WriteString("\n\n")
 	}
 
 	return b.String()
@@ -688,10 +651,21 @@ func (m Model) renderPreview(height, width int) string {
 	var content strings.Builder
 	content.WriteString(lipgloss.NewStyle().Bold(true).Render(s.Name))
 	content.WriteString("\n")
-	content.WriteString(dimStyle.Render(fmt.Sprintf("ID: %s", s.ID[:min(20, len(s.ID))])))
+	content.WriteString(dimStyle.Render(fmt.Sprintf("ID: %s", s.ID)))
 	content.WriteString("\n")
+
+	// Show full path
+	displayDir := session.DecodeDirPath(s.Directory)
+	content.WriteString(dimStyle.Render(fmt.Sprintf("Path: %s", displayDir)))
+	content.WriteString("\n")
+
 	content.WriteString(dimStyle.Render(fmt.Sprintf("Messages: %d", s.MessageCount)))
 	content.WriteString("\n")
+
+	if s.IsAgent {
+		content.WriteString(dimStyle.Render("Type: Agent sub-session"))
+		content.WriteString("\n")
+	}
 
 	if len(s.Tags) > 0 {
 		content.WriteString("Tags: ")
@@ -738,4 +712,45 @@ func wrapText(s string, width int) string {
 		return s
 	}
 	return s[:width-3] + "..."
+}
+
+// relativeTime returns a human-readable relative time string
+func relativeTime(t time.Time) string {
+	now := time.Now()
+	diff := now.Sub(t)
+
+	switch {
+	case diff < time.Minute:
+		return "just now"
+	case diff < time.Hour:
+		mins := int(diff.Minutes())
+		if mins == 1 {
+			return "1 minute ago"
+		}
+		return fmt.Sprintf("%d minutes ago", mins)
+	case diff < 24*time.Hour:
+		hours := int(diff.Hours())
+		if hours == 1 {
+			return "1 hour ago"
+		}
+		return fmt.Sprintf("%d hours ago", hours)
+	case diff < 7*24*time.Hour:
+		days := int(diff.Hours() / 24)
+		if days == 1 {
+			return "1 day ago"
+		}
+		return fmt.Sprintf("%d days ago", days)
+	case diff < 30*24*time.Hour:
+		weeks := int(diff.Hours() / 24 / 7)
+		if weeks == 1 {
+			return "1 week ago"
+		}
+		return fmt.Sprintf("%d weeks ago", weeks)
+	default:
+		months := int(diff.Hours() / 24 / 30)
+		if months == 1 {
+			return "1 month ago"
+		}
+		return fmt.Sprintf("%d months ago", months)
+	}
 }
