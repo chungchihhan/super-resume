@@ -660,8 +660,8 @@ func (m Model) renderList(height, width int) string {
 		// Relative time
 		relTime := relativeTime(s.Modified)
 
-		// Message count and ID
-		meta := fmt.Sprintf("%s · %d messages · %s", relTime, s.MessageCount, truncateStr(s.ID, 20))
+		// Message count
+		meta := fmt.Sprintf("%s · %d messages", relTime, s.MessageCount)
 
 		// Apply style - consistent alignment
 		if i == m.cursor {

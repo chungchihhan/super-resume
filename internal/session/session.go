@@ -183,25 +183,23 @@ func (m *Manager) parseSession(path string, info os.FileInfo) (*Session, error) 
 
 	lineCount := 0
 	previewLines := 3
+	var firstUserMessage string
 
 	for scanner.Scan() {
 		lineCount++
 		line := scanner.Text()
 
-		if lineCount == 1 {
-			// Try to extract session name from first message
-			var msg Message
-			if err := json.Unmarshal([]byte(line), &msg); err == nil {
-				if msg.Summary != "" {
-					session.Name = truncate(msg.Summary, 50)
+		var msg Message
+		if err := json.Unmarshal([]byte(line), &msg); err == nil {
+			// Capture the first user message for session name
+			if firstUserMessage == "" && msg.Message.Role == "user" {
+				if text := extractMessageText(msg); text != "" {
+					firstUserMessage = text
 				}
 			}
-		}
 
-		// Collect preview messages
-		if len(session.Preview) < previewLines {
-			var msg Message
-			if err := json.Unmarshal([]byte(line), &msg); err == nil {
+			// Collect preview messages
+			if len(session.Preview) < previewLines {
 				preview := extractPreviewText(msg)
 				if preview != "" {
 					session.Preview = append(session.Preview, preview)
@@ -210,8 +208,35 @@ func (m *Manager) parseSession(path string, info os.FileInfo) (*Session, error) 
 		}
 	}
 
+	// Use first user message as session name
+	if firstUserMessage != "" {
+		session.Name = truncate(firstUserMessage, 150)
+	} else {
+		session.Name = "<Empty session>"
+	}
+
 	session.MessageCount = lineCount
 	return session, nil
+}
+
+func extractMessageText(msg Message) string {
+	if msg.Message.Content == nil {
+		return ""
+	}
+
+	switch content := msg.Message.Content.(type) {
+	case string:
+		return content
+	case []any:
+		for _, block := range content {
+			if m, ok := block.(map[string]any); ok {
+				if text, ok := m["text"].(string); ok {
+					return text
+				}
+			}
+		}
+	}
+	return ""
 }
 
 func extractPreviewText(msg Message) string {
