@@ -43,12 +43,6 @@ var (
 			Background(lipgloss.AdaptiveColor{Light: "254", Dark: "236"}).
 			Padding(0, 1)
 
-	previewStyle = lipgloss.NewStyle().
-			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("62")).
-			Padding(1).
-			MarginLeft(2)
-
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "250"})
 
@@ -65,7 +59,8 @@ type keyMap struct {
 	Delete       key.Binding
 	Tag          key.Binding
 	Filter       key.Binding
-	Preview      key.Binding
+	Right        key.Binding
+	Left         key.Binding
 	Enter        key.Binding
 	Escape       key.Binding
 	Help         key.Binding
@@ -102,9 +97,13 @@ var keys = keyMap{
 		key.WithKeys("/"),
 		key.WithHelp("/", "filter"),
 	),
-	Preview: key.NewBinding(
-		key.WithKeys("tab"),
-		key.WithHelp("tab", "toggle preview"),
+	Right: key.NewBinding(
+		key.WithKeys("right", "l"),
+		key.WithHelp("→", "preview"),
+	),
+	Left: key.NewBinding(
+		key.WithKeys("left", "h"),
+		key.WithHelp("←", "back"),
 	),
 	Enter: key.NewBinding(
 		key.WithKeys("enter"),
@@ -152,7 +151,7 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.PageUp, k.PageDown},
 		{k.Pin, k.Delete, k.Tag},
-		{k.Filter, k.Preview, k.Enter},
+		{k.Filter, k.Right, k.Enter},
 		{k.ToggleAll, k.ToggleAgents, k.Help, k.Quit},
 	}
 }
@@ -165,6 +164,7 @@ const (
 	ModeFilter
 	ModeConfirmDelete
 	ModeAddTag
+	ModePreview
 )
 
 // Model is the bubbletea model.
@@ -181,7 +181,6 @@ type Model struct {
 	tagInput        textinput.Model
 	help            help.Model
 	showHelp        bool
-	showPreview     bool
 	showAllSessions bool // false = current dir only, true = all sessions
 	showAgents      bool // false = hide agent sessions, true = show them
 	statusMessage   string
@@ -205,7 +204,6 @@ func New(mgr *session.Manager, meta *metadata.Store) Model {
 		help:            help.New(),
 		filterInput:     filterInput,
 		tagInput:        tagInput,
-		showPreview:     true,
 		showAllSessions: false, // Default: current directory only
 		showAgents:      true,  // Default: show agent sessions
 		currentDir:      mgr.GetCurrentDir(),
@@ -343,6 +341,21 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 		return m, nil
+
+	case ModePreview:
+		switch {
+		case key.Matches(msg, keys.Escape), key.Matches(msg, keys.Left):
+			m.mode = ModeNormal
+		case key.Matches(msg, keys.Quit):
+			return m, tea.Quit
+		case key.Matches(msg, keys.Enter):
+			if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
+				s := m.filtered[m.cursor]
+				fmt.Printf("\n\nTo resume this session:\n  claude --resume %s\n\n", s.ID)
+				return m, tea.Quit
+			}
+		}
+		return m, nil
 	}
 
 	// Normal mode
@@ -408,8 +421,10 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.filterInput.Focus()
 		return m, textinput.Blink
 
-	case key.Matches(msg, keys.Preview):
-		m.showPreview = !m.showPreview
+	case key.Matches(msg, keys.Right):
+		if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
+			m.mode = ModePreview
+		}
 
 	case key.Matches(msg, keys.Help):
 		m.showHelp = !m.showHelp
@@ -498,6 +513,11 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
+	// Full-screen preview mode
+	if m.mode == ModePreview && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
+		return m.renderFullPreview()
+	}
+
 	var b strings.Builder
 
 	// Simple title
@@ -531,25 +551,8 @@ func (m Model) View() string {
 		listHeight = 3
 	}
 
-	// Calculate preview width - list gets 70%, preview gets 30%
-	listWidth := m.width
-	previewWidth := 0
-	if m.showPreview && m.width > 100 {
-		listWidth = m.width * 70 / 100
-		previewWidth = m.width - listWidth - 2
-	}
-
 	// Session list
-	listContent := m.renderList(listHeight, listWidth)
-
-	// Preview panel
-	if m.showPreview && previewWidth > 0 && len(m.filtered) > 0 && m.cursor < len(m.filtered) {
-		previewContent := m.renderPreview(listHeight, previewWidth)
-		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, listContent, previewContent))
-	} else {
-		b.WriteString(listContent)
-	}
-
+	b.WriteString(m.renderList(listHeight, m.width))
 	b.WriteString("\n")
 
 	// Modal overlays
@@ -567,17 +570,16 @@ func (m Model) View() string {
 		b.WriteString(m.tagInput.View())
 	}
 
-	// Help bar - Claude Code style
+	// Help bar
 	b.WriteString("\n")
 	helpItems := []string{
-		"A to show all",
-		"S to toggle agents",
-		"P to pin",
-		"D to delete",
-		"T to tag",
-		"Type to search",
-		"Esc to cancel",
-		"→ to preview",
+		"↑↓ navigate",
+		"→ preview",
+		"A all/current",
+		"S agents",
+		"P pin",
+		"D delete",
+		"/ filter",
 	}
 	b.WriteString(dimStyle.Render(strings.Join(helpItems, " · ")))
 
@@ -637,83 +639,90 @@ func (m Model) renderList(height, width int) string {
 	return b.String()
 }
 
+func (m Model) renderFullPreview() string {
+	s := m.filtered[m.cursor]
+
+	var b strings.Builder
+
+	// Title bar
+	b.WriteString(titleStyle.Render("Session Preview"))
+	b.WriteString("\n\n")
+
+	// Session name
+	b.WriteString(lipgloss.NewStyle().Bold(true).Render(s.Name))
+	b.WriteString("\n\n")
+
+	// Metadata
+	b.WriteString(dimStyle.Render(fmt.Sprintf("ID: %s", s.ID)))
+	b.WriteString("\n")
+
+	displayDir := session.DecodeDirPath(s.Directory)
+	b.WriteString(dimStyle.Render(fmt.Sprintf("Path: %s", displayDir)))
+	b.WriteString("\n")
+
+	b.WriteString(dimStyle.Render(fmt.Sprintf("Messages: %d", s.MessageCount)))
+	b.WriteString("\n")
+
+	b.WriteString(dimStyle.Render(fmt.Sprintf("Modified: %s", relativeTime(s.Modified))))
+	b.WriteString("\n")
+
+	if s.IsAgent {
+		b.WriteString(dimStyle.Render("Type: Agent sub-session"))
+		b.WriteString("\n")
+	}
+
+	if len(s.Tags) > 0 {
+		b.WriteString("Tags: ")
+		for _, t := range s.Tags {
+			b.WriteString(tagStyle.Render(t) + " ")
+		}
+		b.WriteString("\n")
+	}
+
+	// Resume command
+	b.WriteString("\n")
+	b.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("82")).Render("Resume Command:"))
+	b.WriteString("\n")
+	resumeCmd := fmt.Sprintf("claude --resume %s", s.ID)
+	b.WriteString(commandStyle.Render(resumeCmd))
+	b.WriteString("\n")
+
+	// Preview content
+	b.WriteString("\n")
+	b.WriteString(lipgloss.NewStyle().Bold(true).Render("Conversation Preview:"))
+	b.WriteString("\n\n")
+
+	previewLines := m.height - 18
+	if previewLines < 5 {
+		previewLines = 5
+	}
+
+	preview, err := m.manager.GetPreview(s.ID, previewLines)
+	if err == nil {
+		for _, line := range preview {
+			b.WriteString(dimStyle.Render(line))
+			b.WriteString("\n")
+		}
+	}
+
+	// Help bar
+	b.WriteString("\n")
+	b.WriteString(dimStyle.Render("← back · Enter to resume · Esc to cancel"))
+
+	return b.String()
+}
+
 // Style for command display
 var commandStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("82")).
 	Background(lipgloss.AdaptiveColor{Light: "254", Dark: "236"}).
 	Padding(0, 1)
 
-func (m Model) renderPreview(height, width int) string {
-	if len(m.filtered) == 0 || m.cursor >= len(m.filtered) {
-		return ""
-	}
-
-	s := m.filtered[m.cursor]
-
-	var content strings.Builder
-	content.WriteString(lipgloss.NewStyle().Bold(true).Render(s.Name))
-	content.WriteString("\n")
-	content.WriteString(dimStyle.Render(fmt.Sprintf("ID: %s", s.ID)))
-	content.WriteString("\n")
-
-	// Show full path
-	displayDir := session.DecodeDirPath(s.Directory)
-	content.WriteString(dimStyle.Render(fmt.Sprintf("Path: %s", displayDir)))
-	content.WriteString("\n")
-
-	content.WriteString(dimStyle.Render(fmt.Sprintf("Messages: %d", s.MessageCount)))
-	content.WriteString("\n")
-
-	if s.IsAgent {
-		content.WriteString(dimStyle.Render("Type: Agent sub-session"))
-		content.WriteString("\n")
-	}
-
-	if len(s.Tags) > 0 {
-		content.WriteString("Tags: ")
-		for _, t := range s.Tags {
-			content.WriteString(tagStyle.Render(t) + " ")
-		}
-		content.WriteString("\n")
-	}
-
-	// Resume command
-	content.WriteString("\n")
-	content.WriteString(lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("82")).Render("Resume Command:"))
-	content.WriteString("\n")
-	resumeCmd := fmt.Sprintf("claude --resume %s", s.ID)
-	content.WriteString(commandStyle.Render(resumeCmd))
-	content.WriteString("\n")
-
-	content.WriteString("\n")
-	content.WriteString(lipgloss.NewStyle().Bold(true).Render("Preview:"))
-	content.WriteString("\n")
-
-	// Get preview - reduce lines to make room for command
-	preview, err := m.manager.GetPreview(s.ID, height-12)
-	if err == nil {
-		for _, line := range preview {
-			wrapped := wrapText(line, width-4)
-			content.WriteString(dimStyle.Render(wrapped))
-			content.WriteString("\n")
-		}
-	}
-
-	return previewStyle.Width(width).Height(height).Render(content.String())
-}
-
 func truncateStr(s string, maxLen int) string {
 	if len(s) <= maxLen {
 		return s
 	}
 	return s[:maxLen-3] + "..."
-}
-
-func wrapText(s string, width int) string {
-	if len(s) <= width {
-		return s
-	}
-	return s[:width-3] + "..."
 }
 
 // relativeTime returns a human-readable relative time string
