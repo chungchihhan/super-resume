@@ -15,7 +15,7 @@ import (
 	"github.com/harrychung/session-manager/internal/session"
 )
 
-// Styles
+// Styles - using AdaptiveColor for light/dark background support
 var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
@@ -23,22 +23,24 @@ var (
 			MarginBottom(1)
 
 	selectedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("229")).
-			Background(lipgloss.Color("57")).
+			Foreground(lipgloss.AdaptiveColor{Light: "0", Dark: "229"}).
+			Background(lipgloss.AdaptiveColor{Light: "153", Dark: "57"}).
 			Bold(true)
 
 	pinnedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("220"))
+			Foreground(lipgloss.AdaptiveColor{Light: "130", Dark: "220"})
 
+	// Normal text: black on light bg, white on dark bg
 	normalStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("252"))
+			Foreground(lipgloss.AdaptiveColor{Light: "0", Dark: "255"})
 
+	// Dim text: dark gray on light bg, light gray on dark bg
 	dimStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("240"))
+			Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "250"})
 
 	tagStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("86")).
-			Background(lipgloss.Color("236")).
+			Background(lipgloss.AdaptiveColor{Light: "254", Dark: "236"}).
 			Padding(0, 1)
 
 	previewStyle = lipgloss.NewStyle().
@@ -48,7 +50,7 @@ var (
 			MarginLeft(2)
 
 	helpStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("241"))
+			Foreground(lipgloss.AdaptiveColor{Light: "240", Dark: "250"})
 
 	statusStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("205")).
@@ -638,7 +640,7 @@ func (m Model) renderList(height, width int) string {
 // Style for command display
 var commandStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("82")).
-	Background(lipgloss.Color("236")).
+	Background(lipgloss.AdaptiveColor{Light: "254", Dark: "236"}).
 	Padding(0, 1)
 
 func (m Model) renderPreview(height, width int) string {
