@@ -3,6 +3,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -19,8 +20,7 @@ import (
 var (
 	titleStyle = lipgloss.NewStyle().
 			Bold(true).
-			Foreground(lipgloss.Color("205")).
-			MarginBottom(1)
+			Foreground(lipgloss.Color("205"))
 
 	selectedStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.AdaptiveColor{Light: "0", Dark: "229"}).
@@ -486,11 +486,7 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.ToggleAll):
 		m.showAllSessions = !m.showAllSessions
-		if m.showAllSessions {
-			m.statusMessage = "Showing all sessions"
-		} else {
-			m.statusMessage = "Showing current directory only"
-		}
+		m.statusMessage = "" // Clear status, title shows the mode
 		return m, m.loadSessions
 
 	case key.Matches(msg, keys.ToggleAgents):
@@ -615,12 +611,18 @@ func (m Model) View() string {
 
 	var b strings.Builder
 
-	// Simple title
-	b.WriteString(titleStyle.Render("Sessions"))
-	if !m.showAllSessions {
-		b.WriteString(dimStyle.Render(fmt.Sprintf(" in %s", m.currentDir)))
+	// Title with scope indicator
+	if m.showAllSessions {
+		b.WriteString(titleStyle.Render("Sessions") + dimStyle.Render(" · All"))
+	} else {
+		// Shorten path: replace home dir with ~
+		displayDir := m.currentDir
+		if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(displayDir, home) {
+			displayDir = "~" + strings.TrimPrefix(displayDir, home)
+		}
+		b.WriteString(titleStyle.Render("Sessions") + dimStyle.Render(" · "+displayDir))
 	}
-	b.WriteString("\n")
+	b.WriteString("\n\n")
 
 	// Filter line
 	if m.mode == ModeFilter {
