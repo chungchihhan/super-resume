@@ -839,7 +839,6 @@ func (m Model) renderList(height, width int) string {
 		if home, err := os.UserHomeDir(); err == nil && strings.HasPrefix(displayPath, home) {
 			displayPath = "~" + strings.TrimPrefix(displayPath, home)
 		}
-		displayPath = truncateStr(displayPath, 30)
 		meta := fmt.Sprintf("%s · %d msgs · %s", relTime, s.MessageCount, displayPath)
 
 		b.WriteString(metaIndent + dimStyle.Render(meta))
