@@ -21,9 +21,33 @@ A TUI for managing Claude Code sessions - browse, filter, pin, tag, and resume s
 
 ## Installation
 
+### One-liner Install (Recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/chungchihhan/super-resume/main/install.sh | bash
+```
+
+### Claude Code Plugin Marketplace
+
+```bash
+# Add the marketplace
+/plugin marketplace add chungchihhan/super-resume
+
+# Install the plugin
+/plugin install super-resume
+```
+
+### Go Install
+
+```bash
+go install github.com/chungchihhan/super-resume/cmd/super-resume@latest
+```
+
+### Build from Source
+
 ```bash
 # Clone the repository
-git clone https://github.com/harrychung/super-resume.git
+git clone https://github.com/chungchihhan/super-resume.git
 cd super-resume
 
 # Build the binary

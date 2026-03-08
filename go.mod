@@ -1,4 +1,4 @@
-module github.com/harrychung/super-resume
+module github.com/chungchihhan/super-resume
 
 go 1.21
 

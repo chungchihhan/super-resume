@@ -1,0 +1,16 @@
+{
+  "name": "Super Resume Marketplace",
+  "description": "Plugins for managing Claude Code sessions",
+  "plugins": [
+    {
+      "id": "super-resume",
+      "name": "Super Resume",
+      "description": "Manage Claude Code sessions with a TUI - pin, delete, tag, and preview sessions",
+      "version": "1.0.0",
+      "repository": "chungchihhan/super-resume",
+      "author": "chungchihhan",
+      "license": "MIT",
+      "keywords": ["sessions", "tui", "management", "productivity"]
+    }
+  ]
+}
