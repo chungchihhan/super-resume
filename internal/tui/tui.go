@@ -190,6 +190,16 @@ type Model struct {
 	previewSessionID string                   // ID of cached preview session
 	selectedSession *session.Session
 	currentDir      string
+
+	// Resume info - set when user selects a session with Enter
+	ResumeSessionID    string // Session ID to resume
+	ResumeDirectory    string // Directory where the session was created (encoded)
+	ResumeMessageIndex int    // Message index (0 = newest/bottom, >0 = specific message from preview)
+}
+
+// GetResumeInfo returns the session ID, directory, and message index if a session was selected for resume.
+func (m Model) GetResumeInfo() (sessionID string, directory string, messageIndex int) {
+	return m.ResumeSessionID, m.ResumeDirectory, m.ResumeMessageIndex
 }
 
 // New creates a new TUI model.
@@ -358,10 +368,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "enter":
 			if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 				s := m.filtered[m.cursor]
-				// Show which message was selected (1-indexed for user display)
-				msgPos := m.previewCursor + 1
-				totalMsgs := len(m.previewCache)
-				fmt.Printf("\n\nTo resume this session (at message %d/%d):\n  claude --resume %s\n\n", msgPos, totalMsgs, s.ID)
+				m.ResumeSessionID = s.ID
+				m.ResumeDirectory = s.Cwd // Use actual cwd from session file
+				// Store message position from bottom (previewCursor is from top)
+				// len-1-previewCursor gives position from bottom, +1 for 1-indexed
+				m.ResumeMessageIndex = m.previewCursor + 1
 				return m, tea.Quit
 			}
 			return m, nil
@@ -516,8 +527,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, keys.Enter):
 		if len(m.filtered) > 0 && m.cursor < len(m.filtered) {
 			s := m.filtered[m.cursor]
-			// Return with session info for resume
-			fmt.Printf("\n\nTo resume this session:\n  claude --resume %s\n\n", s.ID)
+			m.ResumeSessionID = s.ID
+			m.ResumeDirectory = s.Cwd // Use actual cwd from session file
+			m.ResumeMessageIndex = 0  // 0 = newest message (bottom)
 			return m, tea.Quit
 		}
 

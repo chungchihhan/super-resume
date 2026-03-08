@@ -4,6 +4,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"syscall"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/harrychung/super-resume/internal/metadata"
@@ -42,8 +44,30 @@ func runTUI() error {
 	model := tui.New(mgr, meta)
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
-	if _, err := p.Run(); err != nil {
+	finalModel, err := p.Run()
+	if err != nil {
 		return fmt.Errorf("failed to run TUI: %w", err)
+	}
+
+	// Check if a session was selected for resume
+	if m, ok := finalModel.(tui.Model); ok {
+		sessionID, cwd, _ := m.GetResumeInfo()
+		if sessionID != "" {
+			// Change to the session's working directory first
+			if cwd != "" {
+				if err := os.Chdir(cwd); err != nil {
+					return fmt.Errorf("failed to change to session directory %s: %w", cwd, err)
+				}
+			}
+
+			// Execute claude --resume directly
+			claudePath, err := exec.LookPath("claude")
+			if err != nil {
+				return fmt.Errorf("claude not found in PATH: %w", err)
+			}
+			args := []string{"claude", "--resume", sessionID}
+			return syscall.Exec(claudePath, args, os.Environ())
+		}
 	}
 
 	return nil

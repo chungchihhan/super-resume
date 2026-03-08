@@ -17,7 +17,8 @@ import (
 type Session struct {
 	ID           string
 	Path         string
-	Directory    string
+	Directory    string // Encoded directory name (folder name in .claude/projects)
+	Cwd          string // Actual working directory path from session file
 	Name         string
 	Created      time.Time
 	Modified     time.Time
@@ -194,6 +195,16 @@ func (m *Manager) parseSession(path string, info os.FileInfo) (*Session, error) 
 	for scanner.Scan() {
 		lineCount++
 		line := scanner.Text()
+
+		// Parse cwd from any line (keep looking until we find it)
+		if session.Cwd == "" {
+			var meta struct {
+				Cwd string `json:"cwd"`
+			}
+			if err := json.Unmarshal([]byte(line), &meta); err == nil && meta.Cwd != "" {
+				session.Cwd = meta.Cwd
+			}
+		}
 
 		var msg Message
 		if err := json.Unmarshal([]byte(line), &msg); err == nil {
