@@ -8,9 +8,9 @@ import (
 	"syscall"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/harrychung/super-resume/internal/metadata"
-	"github.com/harrychung/super-resume/internal/session"
-	"github.com/harrychung/super-resume/internal/tui"
+	"github.com/chungchihhan/super-resume/internal/metadata"
+	"github.com/chungchihhan/super-resume/internal/session"
+	"github.com/chungchihhan/super-resume/internal/tui"
 )
 
 func main() {

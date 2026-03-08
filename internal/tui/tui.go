@@ -12,8 +12,8 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/harrychung/super-resume/internal/metadata"
-	"github.com/harrychung/super-resume/internal/session"
+	"github.com/chungchihhan/super-resume/internal/metadata"
+	"github.com/chungchihhan/super-resume/internal/session"
 )
 
 // Styles - using AdaptiveColor for light/dark background support
