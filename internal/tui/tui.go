@@ -566,19 +566,19 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			// Toggle this session's agents
 			if m.expandedSessions[s.ID] {
 				delete(m.expandedSessions, s.ID)
-				m.statusMessage = "Hidden agents for: " + s.Name
+				m.statusMessage = "Hidden agents"
 			} else {
 				// Check if this session has any agents first
 				hasAgents := false
 				for _, sess := range m.sessions {
-					if sess.IsAgent && sess.Directory == s.Directory {
+					if sess.IsAgent && sess.ParentSessionID == s.ID {
 						hasAgents = true
 						break
 					}
 				}
 				if hasAgents {
 					m.expandedSessions[s.ID] = true
-					m.statusMessage = "Showing agents for: " + s.Name
+					m.statusMessage = "Showing agents"
 				} else {
 					m.statusMessage = "No agents for this session"
 				}
@@ -613,27 +613,22 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) applyFilter() {
 	filter := strings.ToLower(m.filterInput.Value())
 
-	// Build set of directories that have expanded sessions
-	expandedDirs := make(map[string]bool)
-	for sessionID := range m.expandedSessions {
-		for _, s := range m.sessions {
-			if s.ID == sessionID {
-				expandedDirs[s.Directory] = true
-				break
-			}
+	// Separate parent sessions and agents
+	var parentSessions []*session.Session
+	agentsByParent := make(map[string][]*session.Session)
+
+	for _, s := range m.sessions {
+		if s.IsAgent {
+			agentsByParent[s.ParentSessionID] = append(agentsByParent[s.ParentSessionID], s)
+		} else {
+			parentSessions = append(parentSessions, s)
 		}
 	}
 
+	// Build filtered list: parent sessions with their agents inserted directly after
 	var filtered []*session.Session
-	for _, s := range m.sessions {
-		// Handle agent sessions - only show if parent session is expanded
-		if s.IsAgent {
-			if !expandedDirs[s.Directory] {
-				continue
-			}
-		}
-
-		// Apply text filter
+	for _, s := range parentSessions {
+		// Apply text filter to parent session
 		if filter != "" {
 			if !strings.Contains(strings.ToLower(s.Name), filter) &&
 				!strings.Contains(strings.ToLower(s.ID), filter) &&
@@ -644,6 +639,13 @@ func (m *Model) applyFilter() {
 		}
 
 		filtered = append(filtered, s)
+
+		// Add agents right after their parent if expanded
+		if m.expandedSessions[s.ID] {
+			for _, agent := range agentsByParent[s.ID] {
+				filtered = append(filtered, agent)
+			}
+		}
 	}
 	m.filtered = filtered
 

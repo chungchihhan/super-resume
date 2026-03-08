@@ -15,23 +15,25 @@ import (
 
 // Session represents a Claude Code session.
 type Session struct {
-	ID           string
-	Path         string
-	Directory    string // Encoded directory name (folder name in .claude/projects)
-	Cwd          string // Actual working directory path from session file
-	Name         string
-	Created      time.Time
-	Modified     time.Time
-	MessageCount int
-	IsPinned     bool
-	IsAgent      bool             // True if this is a sub-agent session
-	Tags         []string
-	Preview      []PreviewMessage // First few messages for preview
+	ID              string
+	Path            string
+	Directory       string // Encoded directory name (folder name in .claude/projects)
+	Cwd             string // Actual working directory path from session file
+	Name            string
+	Created         time.Time
+	Modified        time.Time
+	MessageCount    int
+	IsPinned        bool
+	IsAgent         bool             // True if this is a sub-agent session
+	ParentSessionID string           // For agents: the parent session ID
+	Tags            []string
+	Preview         []PreviewMessage // First few messages for preview
 }
 
 // Message represents a single message in the transcript.
 type Message struct {
 	Type    string `json:"type"`
+	IsMeta  bool   `json:"isMeta"`
 	Message struct {
 		Role    string `json:"role"`
 		Content any    `json:"content"`
@@ -195,30 +197,55 @@ func (m *Manager) parseSession(path string, info os.FileInfo) (*Session, error) 
 		lineCount++
 		line := scanner.Text()
 
-		// Parse cwd from any line (keep looking until we find it)
-		if session.Cwd == "" {
+		// Parse cwd and sessionId from any line (keep looking until we find them)
+		if session.Cwd == "" || (session.IsAgent && session.ParentSessionID == "") {
 			var meta struct {
-				Cwd string `json:"cwd"`
+				Cwd       string `json:"cwd"`
+				SessionID string `json:"sessionId"`
 			}
-			if err := json.Unmarshal([]byte(line), &meta); err == nil && meta.Cwd != "" {
-				session.Cwd = meta.Cwd
+			if err := json.Unmarshal([]byte(line), &meta); err == nil {
+				if meta.Cwd != "" && session.Cwd == "" {
+					session.Cwd = meta.Cwd
+				}
+				if meta.SessionID != "" && session.ParentSessionID == "" {
+					session.ParentSessionID = meta.SessionID
+				}
 			}
 		}
 
 		var msg Message
 		if err := json.Unmarshal([]byte(line), &msg); err == nil {
+			// Skip meta messages (system caveat messages)
+			if msg.IsMeta {
+				continue
+			}
+
+			// Get message text
+			text := extractMessageText(msg)
+
+			// Skip internal command messages (XML-tagged commands)
+			if strings.HasPrefix(text, "<command-") ||
+				strings.HasPrefix(text, "<local-command-") ||
+				strings.HasPrefix(text, "<") && strings.Contains(text, "</") {
+				continue
+			}
+
 			// Capture the first user message for session name
 			if firstUserMessage == "" && msg.Message.Role == "user" {
-				if text := extractMessageText(msg); text != "" {
+				if text != "" {
 					firstUserMessage = text
 				}
 			}
 
-			// Collect preview messages
-			if len(session.Preview) < previewLines {
-				preview := extractPreviewMessage(msg)
-				if preview.Text != "" {
-					session.Preview = append(session.Preview, preview)
+			// Collect preview messages (use already extracted text)
+			if len(session.Preview) < previewLines && text != "" {
+				role := msg.Message.Role
+				if msg.Summary != "" {
+					role = "summary"
+					text = msg.Summary
+				}
+				if role != "" {
+					session.Preview = append(session.Preview, PreviewMessage{Role: role, Text: text})
 				}
 			}
 		}
