@@ -96,6 +96,8 @@ func handleCommand(args []string) error {
 		return cmdDelete(mgr, cmdArgs)
 	case "tag":
 		return cmdTag(meta, cmdArgs)
+	case "untag":
+		return cmdUntag(meta, cmdArgs)
 	case "list":
 		return cmdList(mgr)
 	case "help", "-h", "--help":
@@ -189,6 +191,22 @@ func cmdTag(meta *metadata.Store, args []string) error {
 	return nil
 }
 
+func cmdUntag(meta *metadata.Store, args []string) error {
+	if len(args) < 2 {
+		return fmt.Errorf("usage: super-resume untag <session-id> <tag>")
+	}
+
+	sessionID := args[0]
+	tag := args[1]
+
+	if err := meta.RemoveTag(sessionID, tag); err != nil {
+		return err
+	}
+
+	fmt.Printf("🏷️  Removed tag '%s' from %s\n", tag, sessionID)
+	return nil
+}
+
 func cmdList(mgr *session.Manager) error {
 	sessions, err := mgr.List()
 	if err != nil {
@@ -246,28 +264,30 @@ func joinTags(tags []string) string {
 }
 
 func printHelp() {
-	fmt.Println(`Claude Code Session Manager
+	fmt.Println(`Super Resume - Claude Code Session Manager
 
 USAGE:
     super-resume              Launch interactive TUI
     super-resume <command>    Run a command
 
 COMMANDS:
-    pin [session]     Pin a session (uses CLAUDE_SESSION_ID if not specified)
-    unpin [session]   Unpin a session
-    delete <session>  Delete a session
+    pin [session]        Pin a session (uses current session if not specified)
+    unpin [session]      Unpin a session
     tag <session> <tag>  Add a tag to a session
-    list              List all sessions
-    help              Show this help
+    untag <session> <tag>  Remove a tag from a session
+    list                 List all sessions
+    help                 Show this help
 
 TUI KEYBINDINGS:
     ↑/k, ↓/j    Navigate
-    p           Pin/unpin session
-    d           Delete session
-    t           Add tag
+    Enter       Resume session
+    →/l         Preview session
+    A           Toggle all/current directory
+    S           Show/hide agent sessions
+    P           Pin/unpin session
+    T           Add tag
+    U           Manage tags
+    D           Delete session
     /           Filter sessions
-    Tab         Toggle preview
-    Enter       Show resume command
-    ?           Toggle help
-    q           Quit`)
+    Q           Quit`)
 }
