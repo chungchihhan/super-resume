@@ -19,6 +19,12 @@ type Store struct {
 type Data struct {
 	Pinned map[string]bool     `json:"pinned"`
 	Tags   map[string][]string `json:"tags"`
+	Config Config              `json:"config"`
+}
+
+// Config holds user configuration.
+type Config struct {
+	Terminal string `json:"terminal"` // terminal, iterm, warp, kitty, alacritty
 }
 
 // New creates a new metadata store.
@@ -196,4 +202,25 @@ func (s *Store) AllPinned() []string {
 		}
 	}
 	return pinned
+}
+
+// GetTerminal returns the configured terminal type.
+func (s *Store) GetTerminal() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.data.Config.Terminal
+}
+
+// SetTerminal sets the terminal type.
+func (s *Store) SetTerminal(terminal string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.data.Config.Terminal = terminal
+	return s.save()
+}
+
+// SupportedTerminals returns a list of supported terminal types.
+func SupportedTerminals() []string {
+	return []string{"terminal", "iterm", "warp", "kitty", "alacritty"}
 }

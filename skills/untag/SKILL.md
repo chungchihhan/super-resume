@@ -1,41 +1,33 @@
 ---
 name: untag
-description: Remove a tag from a Claude Code session. Uses current session if no ID specified.
+description: Remove a tag from a session (current session or by number from list)
 user-invocable: true
-argument-hint: "[session-id] <tag>"
+argument-hint: "<tag> or <number> <tag>"
 ---
 
-# Remove Tag from Session
+# Untag Session
 
 Remove a tag from a session.
 
 ## Task
 
-Remove tag from session: $ARGUMENTS
+Remove tag: $ARGUMENTS
 
 ## Steps
 
-1. Parse the arguments:
-   - If only one argument: use current session (CLAUDE_SESSION_ID) and the argument as tag
-   - If two arguments: first is session ID, second is tag
+1. Parse $ARGUMENTS:
+   - If one argument: remove that tag from current session
+   - If two arguments: first is session number from list, second is the tag
 
 2. Run the untag command:
 
 ```bash
-# If only tag provided (use current session)
-${CLAUDE_PLUGIN_ROOT}/bin/super-resume untag "${CLAUDE_SESSION_ID}" "<tag>"
-
-# If session ID and tag provided
 ${CLAUDE_PLUGIN_ROOT}/bin/super-resume untag "<session-id>" "<tag>"
 ```
 
-3. Confirm the tag was removed
+3. Confirm the tag was removed.
 
-## Usage Examples
+## Examples
 
 - `/untag work` - Remove "work" tag from current session
-- `/untag abc123 old` - Remove "old" tag from session abc123
-
-## Notes
-
-- Use `/super-resume` and press `U` to interactively manage tags
+- `/untag 2 old` - Remove "old" tag from second session from list

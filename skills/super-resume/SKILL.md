@@ -1,23 +1,33 @@
 ---
 name: super-resume
-description: Launch an interactive TUI to manage Claude Code sessions - browse, pin, tag, filter, and resume sessions
+description: Show instructions for the Super Resume TUI (run from terminal)
 user-invocable: true
 argument-hint: ""
 ---
 
-# Super Resume
+# Super Resume TUI
 
-Launch an interactive terminal interface for managing Claude Code sessions.
+**The TUI must be run from your terminal, not inside Claude Code.**
+
+## How to Use
+
+```bash
+super-resume
+```
+
+Or if installed via plugin:
+```bash
+~/.local/bin/super-resume
+```
 
 ## Features
 
-- **Browse sessions** - View all sessions or filter by current directory
-- **Resume directly** - Press Enter to jump straight into a session
-- **Pin sessions** - Pinned sessions appear at the top
-- **Tag sessions** - Add, edit, and remove tags for organization
-- **Filter sessions** - Search by name, ID, directory, or tag
-- **Preview messages** - Navigate through conversation history
-- **Agent sessions** - Expand/collapse agent sub-sessions
+- Browse sessions - View all or filter by current directory
+- Resume directly - Press Enter to jump into a session
+- Pin sessions - Pinned sessions appear first
+- Tag sessions - Add, edit, and remove tags
+- Filter sessions - Search by name, ID, directory, or tag
+- Preview messages - Navigate through conversation history
 
 ## Keyboard Shortcuts
 
@@ -35,10 +45,6 @@ Launch an interactive terminal interface for managing Claude Code sessions.
 | `/` | Filter |
 | `Q` | Quit |
 
-## Usage
+## Quick Commands (inside Claude Code)
 
-Launch the TUI:
-
-```bash
-${CLAUDE_PLUGIN_ROOT}/bin/super-resume
-```
+Type `/help` to see all available commands.
