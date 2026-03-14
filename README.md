@@ -1,18 +1,18 @@
 # Super Resume
 
-A TUI for managing Claude Code sessions - browse, filter, pin, tag, and resume sessions directly.
+A session manager for Claude Code - browse, filter, pin, tag, and resume sessions from both the TUI and directly inside Claude Code via slash commands.
 
 ![Demo](https://img.shields.io/badge/TUI-bubbletea-blue)
 
 ## Features
 
 - **Browse sessions** - View all sessions or filter by current directory
-- **Resume directly** - Press Enter to jump straight into a session
+- **Resume directly** - Jump straight into any session from TUI or Claude Code
 - **Pin sessions** - Pinned sessions appear first
 - **Tag sessions** - Add, edit, and remove tags for organization
 - **Filter sessions** - Search by name, ID, directory, or tag
 - **Preview messages** - Navigate through conversation history
-- **Agent sessions** - Expand/collapse agent sub-sessions per parent
+- **Slash commands** - Manage sessions without leaving Claude Code
 
 ## Prerequisites
 
@@ -46,83 +46,121 @@ go install github.com/chungchihhan/super-resume/cmd/super-resume@latest
 ### Build from Source
 
 ```bash
-# Clone the repository
 git clone https://github.com/chungchihhan/super-resume.git
 cd super-resume
-
-# Build the binary
 make build
-
-# Or manually:
-go mod tidy
-go build -o bin/super-resume ./cmd/super-resume
 ```
 
 ## Usage
 
-### Launch the TUI
+### TUI (Terminal)
 
 ```bash
-./bin/super-resume
+super-resume
 ```
 
 ### CLI Commands
 
 ```bash
-./bin/super-resume list              # List all sessions
-./bin/super-resume pin <session-id>  # Pin a session
-./bin/super-resume unpin <session-id> # Unpin a session
-./bin/super-resume delete <session-id> # Delete a session
-./bin/super-resume tag <session-id> <tag> # Add a tag
+# List sessions
+super-resume list                        # Current directory, 5 sessions
+super-resume list -10                    # Current directory, 10 sessions
+super-resume list -a                     # All directories
+super-resume list -a -10 --pinned        # All dirs, pinned only
+super-resume list --tagged work          # Sessions tagged "work"
+super-resume list --json                 # JSON output
+
+# Session management
+super-resume pin [session-id]            # Pin a session (defaults to current)
+super-resume unpin [session-id]          # Unpin a session
+super-resume tag <session-id> <tag>      # Add a tag
+super-resume untag <session-id> <tag>    # Remove a tag
+super-resume delete <session-id>         # Delete a session
+
+# Resume in terminal
+super-resume config terminal <type>      # Set terminal (warp, iterm, terminal, kitty, alacritty)
+super-resume resume <session-id>         # Open session in configured terminal
 ```
 
-### Use as a Claude Code Plugin
+### Slash Commands (inside Claude Code)
 
-```bash
-claude --plugin-dir ~/path/to/super-resume
+First time setup - configure your terminal:
+
+```
+/setup
 ```
 
-Then use `/manage-sessions` to launch the TUI.
+| Command              | Description                             |
+| -------------------- | --------------------------------------- |
+| `/list-session`      | List sessions in current directory      |
+| `/list-session -a`   | List sessions from all directories      |
+| `/list-session -10`  | List 10 sessions                        |
+| `/list-pinned`       | List pinned sessions                    |
+| `/list-tagged <tag>` | List sessions with a tag                |
+| `/go <n>`            | Resume session by number from last list |
+| `/pin`               | Pin current session                     |
+| `/pin <n>`           | Pin session by number from list         |
+| `/unpin`             | Unpin current session                   |
+| `/tag <tag>`         | Tag current session                     |
+| `/tag <n> <tag>`     | Tag session by number from list         |
+| `/untag <tag>`       | Remove tag from current session         |
+| `/setup`             | Configure terminal preference           |
+| `/help`              | Show all commands                       |
 
-## Keyboard Shortcuts
+**Example workflow:**
+
+```
+/list-session          # See sessions in current directory
+/go 1                  # Resume the first one (opens in your terminal)
+```
+
+```
+/list-pinned           # See pinned sessions
+/tag 2 work            # Tag the second one
+/go 1                  # Resume the first one
+```
+
+> **Note for Warp users:** Enable Warp in System Settings → Privacy & Security → Accessibility for `/go` to work.
+
+## TUI Keyboard Shortcuts
 
 ### List View
 
-| Key | Action |
-|-----|--------|
-| `↑/k` | Move up |
-| `↓/j` | Move down |
-| `PgUp` | Page up |
-| `PgDn` | Page down |
-| `Enter` | **Resume session** (launches Claude) |
-| `→/l` | Preview session |
-| `A` | Toggle all/current directory |
-| `S` | Show/hide agent sessions |
-| `P` | Pin/unpin session |
-| `T` | Add tag |
-| `U` | Manage tags (edit/delete) |
-| `D` | Delete session |
-| `/` | Filter sessions |
-| `Esc` | Clear filter or quit |
-| `Q` | Quit |
+| Key     | Action                       |
+| ------- | ---------------------------- |
+| `↑/k`   | Move up                      |
+| `↓/j`   | Move down                    |
+| `PgUp`  | Page up                      |
+| `PgDn`  | Page down                    |
+| `Enter` | **Resume session**           |
+| `→/l`   | Preview session              |
+| `A`     | Toggle all/current directory |
+| `S`     | Show/hide agent sessions     |
+| `P`     | Pin/unpin session            |
+| `T`     | Add tag                      |
+| `U`     | Manage tags (edit/delete)    |
+| `D`     | Delete session               |
+| `/`     | Filter sessions              |
+| `Esc`   | Clear filter or quit         |
+| `Q`     | Quit                         |
 
 ### Preview View
 
-| Key | Action |
-|-----|--------|
-| `↑/k` | Scroll up |
-| `↓/j` | Scroll down |
-| `Enter` | Resume at selected message |
-| `←/h/Esc` | Back to list |
+| Key       | Action                     |
+| --------- | -------------------------- |
+| `↑/k`     | Scroll up                  |
+| `↓/j`     | Scroll down                |
+| `Enter`   | Resume at selected message |
+| `←/h/Esc` | Back to list               |
 
 ### Tag Management (U)
 
-| Key | Action |
-|-----|--------|
-| `←/→` | Select tag |
-| `D` | Delete selected tag |
-| `Enter` | Edit selected tag |
-| `Esc` | Cancel |
+| Key     | Action              |
+| ------- | ------------------- |
+| `←/→`   | Select tag          |
+| `D`     | Delete selected tag |
+| `Enter` | Edit selected tag   |
+| `Esc`   | Cancel              |
 
 ## Display
 
@@ -141,7 +179,7 @@ Sessions are displayed with:
 ## Data Storage
 
 - **Sessions**: `~/.claude/projects/**/*.jsonl`
-- **Metadata** (pins, tags): `~/.claude/session-metadata.json`
+- **Metadata** (pins, tags, config): `~/.claude/session-metadata.json`
 
 ## Development
 
