@@ -1,23 +1,21 @@
 {
   "name": "super-resume",
-  "description": "Plugins for managing Claude Code sessions",
   "owner": {
     "name": "chungchihhan"
+  },
+  "metadata": {
+    "description": "Plugins for managing Claude Code sessions",
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "super-resume",
-      "description": "Manage Claude Code sessions - pin, tag, and resume sessions from TUI or slash commands",
-      "version": "1.1.0",
-      "author": {
-        "name": "chungchihhan"
-      },
       "source": {
-        "type": "github",
-        "repo": "chungchihhan/super-resume"
+        "source": "url",
+        "url": "https://github.com/chungchihhan/super-resume.git"
       },
-      "license": "MIT",
-      "keywords": ["sessions", "tui", "management", "productivity"]
+      "description": "Manage Claude Code sessions - pin, tag, and resume sessions from TUI or slash commands",
+      "version": "1.1.0"
     }
   ]
 }
