@@ -2,7 +2,10 @@
 
 A session manager for Claude Code - browse, filter, pin, tag, and resume sessions from both the TUI and directly inside Claude Code via slash commands.
 
-![Demo](https://img.shields.io/badge/TUI-bubbletea-blue)
+[![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go&logoColor=white)](https://go.dev)
+[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
+[![Claude Code](https://img.shields.io/badge/Claude_Code-Plugin-D97706?logo=anthropic&logoColor=white)](https://github.com/chungchihhan/super-resume)
+[![TUI](https://img.shields.io/badge/TUI-Bubbletea-FF75B7)](https://github.com/charmbracelet/bubbletea)
 
 ## Features
 
