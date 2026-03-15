@@ -159,7 +159,12 @@ PYEOF
     fi
 
     echo ""
-    info "Installation complete! Restart Claude Code, then run /setup to configure your terminal."
+    info "Installation complete!"
+    echo ""
+    echo "Next steps:"
+    echo "  1. Restart Claude Code"
+    echo "  2. Run: /plugin install super-resume"
+    echo "  3. Run: /setup  (to configure your terminal)"
     echo ""
     echo "Available skills:"
     echo "  /setup            - First-time setup (configure terminal)"
