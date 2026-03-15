@@ -11,15 +11,21 @@ Download the binary and configure your terminal.
 
 ## Steps
 
-### Step 1: Ensure the binary exists
+### Step 1: Locate or download the binary
 
-Check if the binary exists:
+Check in order:
 
 ```bash
-ls "${CLAUDE_PLUGIN_ROOT}/bin/super-resume" 2>/dev/null && echo "exists" || echo "missing"
+# Check ~/.local/bin first (curl install or already symlinked)
+ls "$HOME/.local/bin/super-resume" 2>/dev/null && echo "found:local" || \
+# Then check plugin bin dir (marketplace install, not yet symlinked)
+ls "${CLAUDE_PLUGIN_ROOT}/bin/super-resume" 2>/dev/null && echo "found:plugin" || \
+echo "missing"
 ```
 
-If missing, download the pre-built binary from GitHub releases:
+- If `found:local` → binary is ready, skip to Step 3
+- If `found:plugin` → binary exists but not symlinked, go to Step 2
+- If `missing` → download from GitHub releases:
 
 ```bash
 OS=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -39,11 +45,9 @@ chmod +x "${CLAUDE_PLUGIN_ROOT}/bin/super-resume"
 If download fails, tell the user:
 > Could not download the binary. Please check your internet connection or visit https://github.com/chungchihhan/super-resume/releases to download manually.
 
-If successful, confirm: "Binary downloaded successfully."
+### Step 2: Symlink plugin binary to ~/.local/bin
 
-### Step 2: Symlink binary to ~/.local/bin
-
-So `super-resume` is available in the terminal:
+Only needed when binary is in `${CLAUDE_PLUGIN_ROOT}/bin/` (marketplace install):
 
 ```bash
 mkdir -p "$HOME/.local/bin"
@@ -56,7 +60,7 @@ Then check if `~/.local/bin` is in PATH:
 echo $PATH | grep -q "$HOME/.local/bin" && echo "in PATH" || echo "not in PATH"
 ```
 
-If not in PATH, tell the user to add it to their shell config (e.g. `~/.zshrc` or `~/.bashrc`):
+If not in PATH, tell the user to add it to their shell config (`~/.zshrc` or `~/.bashrc`):
 
 ```
 export PATH="$HOME/.local/bin:$PATH"
@@ -67,7 +71,7 @@ And then reload: `source ~/.zshrc` (or `~/.bashrc`).
 ### Step 3: Check current terminal configuration
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/super-resume" config terminal
+"$HOME/.local/bin/super-resume" config terminal
 ```
 
 ### Step 4: Configure terminal if not set
@@ -85,7 +89,7 @@ If not configured, ask the user which terminal they use:
 Once user selects, run:
 
 ```bash
-"${CLAUDE_PLUGIN_ROOT}/bin/super-resume" config terminal <terminal-name>
+"$HOME/.local/bin/super-resume" config terminal <terminal-name>
 ```
 
 Where `<terminal-name>` is one of: `warp`, `iterm`, `terminal`, `kitty`, `alacritty`

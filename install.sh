@@ -2,7 +2,7 @@
 set -e
 
 # Super Resume Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/harrychung/super-resume/main/install.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/chungchihhan/super-resume/main/install.sh | bash
 
 REPO="chungchihhan/super-resume"
 INSTALL_DIR="${INSTALL_DIR:-$HOME/.local/bin}"
@@ -121,10 +121,13 @@ install() {
     echo "Or add to your Claude settings to make it permanent."
     echo ""
     echo "Available skills:"
-    echo "  /manage-sessions  - Launch the TUI"
-    echo "  /pin-session      - Pin a session"
-    echo "  /delete-session   - Delete a session"
-    echo "  /add-tag          - Add a tag to a session"
+    echo "  /setup            - First-time setup (configure terminal)"
+    echo "  /super-resume     - Open the TUI in your terminal"
+    echo "  /list-session     - List recent sessions"
+    echo "  /go <n>           - Resume session by number (opens new tab)"
+    echo "  /pin              - Pin current or numbered session"
+    echo "  /tag              - Tag current or numbered session"
+    echo "  /help             - Show all available commands"
 }
 
 install
