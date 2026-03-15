@@ -48,4 +48,5 @@ release:
     name: super-resume
   draft: false
   prerelease: auto
-  release_notes_file: RELEASE_NOTES.md
+  header:
+    contents_from_file: RELEASE_NOTES.md
