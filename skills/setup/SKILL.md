@@ -41,13 +41,36 @@ If download fails, tell the user:
 
 If successful, confirm: "Binary downloaded successfully."
 
-### Step 2: Check current terminal configuration
+### Step 2: Symlink binary to ~/.local/bin
+
+So `super-resume` is available in the terminal:
+
+```bash
+mkdir -p "$HOME/.local/bin"
+ln -sf "${CLAUDE_PLUGIN_ROOT}/bin/super-resume" "$HOME/.local/bin/super-resume"
+```
+
+Then check if `~/.local/bin` is in PATH:
+
+```bash
+echo $PATH | grep -q "$HOME/.local/bin" && echo "in PATH" || echo "not in PATH"
+```
+
+If not in PATH, tell the user to add it to their shell config (e.g. `~/.zshrc` or `~/.bashrc`):
+
+```
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+And then reload: `source ~/.zshrc` (or `~/.bashrc`).
+
+### Step 3: Check current terminal configuration
 
 ```bash
 "${CLAUDE_PLUGIN_ROOT}/bin/super-resume" config terminal
 ```
 
-### Step 3: Configure terminal if not set
+### Step 4: Configure terminal if not set
 
 If not configured, ask the user which terminal they use:
 
@@ -67,7 +90,7 @@ Once user selects, run:
 
 Where `<terminal-name>` is one of: `warp`, `iterm`, `terminal`, `kitty`, `alacritty`
 
-### Step 4: Confirm setup complete
+### Step 5: Confirm setup complete
 
 Tell the user setup is complete and they can now use:
 - `/list-session` - List sessions
