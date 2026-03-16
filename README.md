@@ -1,6 +1,7 @@
 # Super Resume
 
 A session manager for Claude Code - browse, filter, pin, tag, and resume sessions from both the TUI and directly inside Claude Code via slash commands.
+<video controls src="super-resume-deom.mp4" title="demo"></video>
 
 [![Go Version](https://img.shields.io/badge/Go-1.21+-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
